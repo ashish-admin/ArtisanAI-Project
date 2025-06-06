@@ -1,0 +1,16 @@
+# artisan_ai_backend/requirements.txt
+fastapi
+uvicorn[standard]
+sqlalchemy
+
+# For password hashing
+passlib[bcrypt]
+
+# For JWT tokens
+python-jose[cryptography]
+
+# Pydantic with email validation support
+pydantic[email]
+
+# For parsing form data (used by OAuth2PasswordRequestForm)
+python-multipart # <-- ADD THIS LINE
