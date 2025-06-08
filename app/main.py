@@ -7,7 +7,7 @@ from app.db import base as base_models
 
 # This command instructs SQLAlchemy to create all the tables defined in app/db/base.py
 # (i.e., the User and Project tables) in the database if they don't already exist.
-# This is a crucial step for the application to function on first run.
+# This is a crucial step for the application to function on its first run.
 base_models.Base.metadata.create_all(bind=engine)
 
 # Create the main FastAPI application instance.
@@ -23,8 +23,8 @@ app = FastAPI(
 # will be included under the /api/v1 prefix.
 app.include_router(api_router, prefix=API_V1_STR)
 
-# Optional: Add a root endpoint for simple health checks
-@app.get("/", status_code=200)
+# Optional: Add a root endpoint for simple health checks.
+@app.get("/", status_code=200, tags=["Health Check"])
 def read_root():
     """
     Root endpoint for basic health check.
