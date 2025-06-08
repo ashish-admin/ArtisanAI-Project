@@ -52,7 +52,7 @@ def create_user_project(db: Session, project: project_schema.ProjectCreate, owne
     Creates a new writing project record for a specific user.
     """
     db_project = models.Project(
-        **project.model_dump(),  # Unpacks the Pydantic model into keyword arguments
+        **project.model_dump(),
         owner_id=owner_id
     )
     db.add(db_project)

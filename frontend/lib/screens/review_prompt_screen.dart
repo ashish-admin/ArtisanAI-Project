@@ -181,7 +181,7 @@ class ReviewPromptScreenState extends State<ReviewPromptScreen> {
     };
 
     try {
-      final String url = '${AuthService.baseUrl}/configurations/'; 
+      const String url = '${AuthService.baseUrl}/configurations/'; 
       final response = await http.post(
         Uri.parse(url), 
         headers: authService.getAuthHeaders(),
