@@ -1,36 +1,32 @@
-# artisan_ai_backend/app/main.py
+# app/main.py
 from fastapi import FastAPI
+from app.core.config import API_V1_STR
+from app.api.v1.api import api_router
+from app.db.session import engine
+from app.db import base as base_models
 
-from . import models
-from .database import engine 
-# Import your routers
-from .routers import configurations, auth, llm_suggestions # <--- ADD llm_suggestions
+# This command instructs SQLAlchemy to create all the tables defined in app/db/base.py
+# (i.e., the User and Project tables) in the database if they don't already exist.
+# This is a crucial step for the application to function on first run.
+base_models.Base.metadata.create_all(bind=engine)
 
-models.Base.metadata.create_all(bind=engine)
-
+# Create the main FastAPI application instance.
+# We can define metadata like the title and version here, which will be
+# visible in the auto-generated API documentation.
 app = FastAPI(
-    title="ArtisanAI Backend",
-    description="API for ArtisanAI to manage prompt configurations, users, LLM suggestions, and advanced prompt crafting.",
-    version="0.4.0", # Version bump for new feature
+    title="Artisan AI - Critique Agent API",
+    openapi_url=f"{API_V1_STR}/openapi.json"
 )
 
-# Include your API routers
-app.include_router(auth.router) 
-app.include_router(configurations.router)
-app.include_router(llm_suggestions.router) # <--- ADD THIS NEW ROUTER
-# We will add prompt_crafter_router here in the next phase
+# Include the main API router.
+# All routes defined in api_router (from auth.py, projects.py, critique.py)
+# will be included under the /api/v1 prefix.
+app.include_router(api_router, prefix=API_V1_STR)
 
-@app.get("/", tags=["Root"])
-async def read_root():
+# Optional: Add a root endpoint for simple health checks
+@app.get("/", status_code=200)
+def read_root():
     """
-    Root endpoint for the ArtisanAI Backend.
-    Provides a welcome message.
+    Root endpoint for basic health check.
     """
-    return {"message": "Welcome to the ArtisanAI Backend! Navigate to /docs for API documentation."}
-
-@app.get("/hello/{name}", tags=["General Testing"])
-async def say_hello(name: str):
-    """
-    A simple endpoint to test if the server is responding.
-    """
-    return {"message": f"Hello, {name} from ArtisanAI Backend!"}
+    return {"status": "ok", "message": "Welcome to the Artisan AI Backend!"}
