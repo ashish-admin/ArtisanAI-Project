@@ -1,16 +1,21 @@
-# artisan_ai_backend/requirements.txt
+# --- Core Framework ---
 fastapi
 uvicorn[standard]
+
+# --- Database ---
 sqlalchemy
 
-# For password hashing
-passlib[bcrypt]
-
-# For JWT tokens
-python-jose[cryptography]
-
-# Pydantic with email validation support
+# --- Data Validation ---
 pydantic[email]
 
-# For parsing form data (used by OAuth2PasswordRequestForm)
-python-multipart # <-- ADD THIS LINE
+# --- Security & Authentication ---
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+
+# --- Google Cloud Integration ---
+google-cloud-aiplatform
+google-cloud-secret-manager
+
+# --- Configuration ---
+python-dotenv
