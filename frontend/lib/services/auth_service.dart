@@ -24,22 +24,16 @@ class AuthService with ChangeNotifier {
   Future<void> _tryAutoLogin() async {
     try {
       final storedToken = await _storage.read(key: 'auth_token');
-      if (kDebugMode) {
-        print("AuthService (_tryAutoLogin): Checking for stored token.");
-      }
-
+      if (kDebugMode) print("AuthService (_tryAutoLogin): Checking for stored token.");
+      
       if (storedToken != null && storedToken.isNotEmpty) {
         _token = storedToken;
         bool isTokenValid = await verifyToken();
         if (isTokenValid) {
           _isAuthenticated = true;
-          if (kDebugMode) {
-            print("AuthService (_tryAutoLogin): Stored token is valid. User is authenticated.");
-          }
+          if (kDebugMode) print("AuthService (_tryAutoLogin): Stored token is valid. User is authenticated.");
         } else {
-          if (kDebugMode) {
-            print("AuthService (_tryAutoLogin): Stored token is EXPIRED or INVALID. Forcing logout.");
-          }
+          if (kDebugMode) print("AuthService (_tryAutoLogin): Stored token is EXPIRED or INVALID. Forcing logout.");
           await logout(notify: false);
         }
       } else {
@@ -93,7 +87,7 @@ class AuthService with ChangeNotifier {
     notifyListeners();
     return false;
   }
-
+  
   Map<String, String> getAuthHeaders() {
     if (_token != null && _token!.isNotEmpty) {
       return {
@@ -115,7 +109,7 @@ class AuthService with ChangeNotifier {
       notifyListeners();
     }
   }
-
+  
   Future<Map<String, dynamic>> _handleAuthResponse(http.Response response) async {
     if (response.statusCode == 401) {
       if (kDebugMode) print("AuthService: Received 401 Unauthorized. Logging out automatically.");
@@ -190,17 +184,13 @@ class AuthService with ChangeNotifier {
     return await _authenticatedPost(url, body: jsonEncode(promptData));
   }
   
-  // --- NEW METHOD TO GET CONFIGURATIONS ---
   Future<Map<String, dynamic>> getConfigurations() async {
     final url = Uri.parse('${AuthService.baseUrl}/configurations/');
-    if (kDebugMode) print("AuthService (getConfigurations): Calling GET endpoint at $url");
     return await _authenticatedGet(url);
   }
 
-  // --- NEW METHOD TO DELETE A CONFIGURATION ---
   Future<Map<String, dynamic>> deleteConfiguration(int configId) async {
     final url = Uri.parse('${AuthService.baseUrl}/configurations/$configId');
-    if (kDebugMode) print("AuthService (deleteConfiguration): Calling DELETE endpoint at $url");
     return await _authenticatedDelete(url);
   }
 }

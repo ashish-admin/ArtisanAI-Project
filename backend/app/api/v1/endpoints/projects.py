@@ -8,7 +8,6 @@ from app.db import crud
 from app.schemas import project as project_schema
 from app.db.base import User as DBUser
 
-# CORRECTED: The comment is now correctly formatted.
 # Create a new API router for project-related endpoints
 router = APIRouter()
 
