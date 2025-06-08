@@ -7,11 +7,10 @@ class SavedConfigurationsScreen extends StatefulWidget {
   const SavedConfigurationsScreen({super.key});
 
   @override
-  // Corrected: Make state class public
-  SavedConfigurationsScreenState createState() => SavedConfigurationsScreenState();
+  State<SavedConfigurationsScreen> createState() => _SavedConfigurationsScreenState();
 }
 
-class SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
+class _SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
   late Future<List<dynamic>> _configsFuture;
 
   @override
@@ -82,6 +81,17 @@ class SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved Configurations'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh List',
+            onPressed: () {
+              setState(() {
+                _configsFuture = _fetchConfigs();
+              });
+            },
+          )
+        ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _configsFuture,
@@ -91,43 +101,65 @@ class SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
           }
           
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: Theme.of(context).colorScheme.error)));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Error: ${snapshot.error}', 
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('You have no saved configurations yet.'));
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text(
+                  'You have no saved configurations yet.\nGo back and use the "Save Config" button on the review screen to save your first one!',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           final configs = snapshot.data!;
 
-          return ListView.builder(
-            itemCount: configs.length,
-            itemBuilder: (ctx, index) {
-              final config = configs[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(config['name'] ?? 'Untitled Configuration'),
-                  subtitle: Text(
-                    config['userGoal'] ?? 'No goal specified.',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          return RefreshIndicator(
+            onRefresh: _fetchConfigs,
+            child: ListView.builder(
+              itemCount: configs.length,
+              itemBuilder: (ctx, index) {
+                final config = configs[index];
+                final String configName = config['name'] ?? 'Untitled Configuration';
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(configName),
+                    subtitle: Text(
+                      config['userGoal'] ?? 'No goal specified.',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      // TODO: Implement loading the configuration into the flow
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Loading "$configName" - To be implemented!')),
+                      );
+                    },
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                      tooltip: 'Delete Configuration',
+                      onPressed: () => _showDeleteConfirmation(config['id'], configName),
+                    ),
                   ),
-                  onTap: () {
-                    // This is the next feature to implement
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Loading "${config['name']}" - To be implemented!')),
-                    );
-                  },
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    color: Theme.of(context).colorScheme.error,
-                    tooltip: 'Delete Configuration',
-                    onPressed: () => _showDeleteConfirmation(config['id'], config['name']),
-                  ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),

@@ -2,29 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:artisan_ai/services/auth_service.dart';
+import 'package:artisan_ai/services/prompt_session_service.dart'; // <-- ADDED THIS IMPORT
 import 'package:artisan_ai/screens/goal_definition_screen.dart';
-import 'package:flutter/foundation.dart'; // For kDebugMode
+import 'package:artisan_ai/screens/saved_configurations_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
-
-  void _loadConfiguration(BuildContext context) async {
-    // Placeholder for future implementation
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Load Configuration - To be fully implemented later!'),
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
     final authService = Provider.of<AuthService>(context, listen: false);
+    // Get the session service
+    final sessionService = Provider.of<PromptSessionService>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,6 +62,8 @@ class WelcomeScreen extends StatelessWidget {
                   icon: const Icon(Icons.add_circle_outline),
                   label: const Text('Start New Prompt'),
                   onPressed: () {
+                    // CORRECTED: Clear the session before starting a new prompt
+                    sessionService.clearSession();
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const GoalDefinitionScreen()),
@@ -81,7 +75,12 @@ class WelcomeScreen extends StatelessWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.folder_open_outlined),
                   label: const Text('Load Configuration'),
-                  onPressed: () => _loadConfiguration(context),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SavedConfigurationsScreen()),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(minimumSize: const Size(240, 50)),
                 ),
               ],
