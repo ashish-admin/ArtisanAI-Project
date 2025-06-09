@@ -1,55 +1,33 @@
-# app/schemas/project.py
+# backend/app/schemas/project.py
+
 from pydantic import BaseModel
-from typing import Optional
+import datetime
 
-# --- Shared Base Schema ---
-# Defines the common attributes of a writing project.
+# Base properties for a project
 class ProjectBase(BaseModel):
-    """
-    Base Pydantic model for a Project.
-    """
     name: str
-    writing_text: str
-    critique_goal: str
-    critique_persona: Optional[str] = None
+    description: str | None = None
+    original_text: str
 
-
-# --- Schemas for Specific Use Cases ---
-
+# Properties to receive on project creation
 class ProjectCreate(ProjectBase):
-    """
-    Schema for creating a new project. It has the same fields as the base.
-    This is used as the request body for the project creation endpoint.
-    """
     pass
 
+# Properties to receive on project update
+class ProjectUpdate(ProjectBase):
+    pass
 
-class ProjectUpdate(BaseModel):
-    """
-    Schema for updating an existing project. All fields are optional
-    to allow for partial updates.
-    """
-    name: Optional[str] = None
-    writing_text: Optional[str] = None
-    critique_goal: Optional[str] = None
-    critique_persona: Optional[str] = None
-    critique_result_text: Optional[str] = None # The critique result can also be updated
-
-
-class Project(ProjectBase):
-    """
-    Schema for returning a project in an API response.
-    It includes all base fields plus the database ID, owner ID,
-    and the critique result.
-    """
+# Properties stored in the database
+class ProjectInDB(ProjectBase):
     id: int
     owner_id: int
-    critique_result_text: Optional[str] = None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    critique_text: str | None = None
 
     class Config:
-        """
-        Pydantic V2 configuration to enable ORM mode (from_attributes).
-        This allows the Pydantic model to be created directly from the
-        SQLAlchemy Project model instance.
-        """
-        from_attributes = True
+        from_attributes = True # Changed from orm_mode
+
+# Properties to return to the client
+class Project(ProjectInDB):
+    pass

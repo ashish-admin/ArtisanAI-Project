@@ -1,53 +1,34 @@
-# app/db/base.py
-from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey
-from sqlalchemy.orm import relationship, declarative_base
+# backend/app/db/base.py
 
-# The declarative_base() function returns a new base class from which
-# all mapped classes should inherit. This is the central point for
-# SQLAlchemy's ORM mapping.
+import datetime
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+
 Base = declarative_base()
 
-# --- SQLAlchemy ORM Models ---
-# These classes define the structure of our database tables.
-
 class User(Base):
-    """
-    Represents the 'users' table in the database.
-    """
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    # This creates the one-to-many relationship.
-    # The 'back_populates' argument links it to the corresponding
-    # relationship on the Project model.
-    projects = relationship("Project", back_populates="owner")
+    projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
 
 class Project(Base):
-    """
-    Represents a user's writing project and its associated critique parameters.
-    This replaces the old 'PromptConfigurationDB'.
-    """
     __tablename__ = "projects"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
-    # The user's original text for critique
-    writing_text = Column(Text, nullable=False)
+    # The user-provided context for the critique
+    original_text = Column(Text, nullable=False)
+
+    # The final, AI-generated critique
+    critique_text = Column(Text, nullable=True)
     
-    # Critique parameters
-    critique_goal = Column(String, nullable=False) # e.g., "Critique plot pacing"
-    critique_persona = Column(String, nullable=True) # e.g., "Professional book editor"
-    
-    # The final AI-generated critique
-    critique_result_text = Column(Text, nullable=True)
-    
-    # Foreign key to link this project to a user
     owner_id = Column(Integer, ForeignKey("users.id"))
-    
-    # Establishes the many-to-one relationship back to the User model
     owner = relationship("User", back_populates="projects")

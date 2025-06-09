@@ -1,43 +1,24 @@
-# app/api/v1/endpoints/critique.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Any
+# backend/app/api/v1/endpoints/critique.py
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from app.schemas import critique as critique_schema
-from app.services import ai_critique_service
-from app.db.base import User as DBUser
+from app.schemas.critique import CritiqueRequest, CritiqueResponse
+from app.services.ai_critique_service import ai_critique_service
+from app.schemas.user import User
 
-# CORRECTED: The comment is now correctly formatted.
-# Create a new API router for the AI critique service
 router = APIRouter()
 
-
-@router.post("/", response_model=critique_schema.CritiqueResponse)
-def get_writing_critique(
-    *,
-    critique_in: critique_schema.CritiqueRequest,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Any:
+@router.post("/refine-prompt", response_model=CritiqueResponse, status_code=status.HTTP_200_OK)
+async def refine_prompt(
+    critique_request: CritiqueRequest,
+    current_user: User = Depends(deps.get_current_user),
+    db: AsyncSession = Depends(deps.get_db),
+):
     """
-    Get an AI-powered critique for a piece of creative writing.
-
-    This is a protected endpoint that requires authentication.
-    It takes the user's writing and critique parameters, sends them to the
-    AI agent service (powered by Gemini), and returns a structured critique.
+    Receives writing and critique parameters, and returns an AI-generated critique.
+    - Requires authentication.
     """
-    if not critique_in.writing_text or not critique_in.writing_text.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Writing text cannot be empty.",
-        )
-
-    # Call the core AI service to get the critique
-    critique = ai_critique_service.get_ai_critique(request=critique_in)
-    
-    if not critique or not critique.main_critique:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get a valid critique from the AI agent.",
-        )
-
-    return critique
+    response = await ai_critique_service.get_critique(critique_request)
+    return response

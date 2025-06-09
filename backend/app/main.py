@@ -1,28 +1,31 @@
-# app/main.py
+# backend/app/main.py
+
 from fastapi import FastAPI
-from app.core.config import API_V1_STR
+from starlette.middleware.cors import CORSMiddleware
+
 from app.api.v1.api import api_router
-from app.db.session import engine
-from app.db import base as base_models
+from app.core.config import settings
 
-# This command instructs SQLAlchemy to create all tables defined in app/db/base.py
-base_models.Base.metadata.create_all(bind=engine)
-
-# Create the main FastAPI application instance.
 app = FastAPI(
-    title="Artisan AI - Critique Agent API",
-    description="API for managing users, writing projects, and getting AI-powered critiques.",
-    version="1.0.0",
-    openapi_url=f"{API_V1_STR}/openapi.json"
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Include the main API router from api/v1/api.py
-# The prefix="/api/v1" ensures all included routes start with that path.
-app.include_router(api_router, prefix=API_V1_STR)
+# Set all CORS enabled origins
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-@app.get("/", tags=["Health Check"])
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+@app.get("/")
 def read_root():
     """
-    Root endpoint for basic health check.
+    An endpoint to confirm the API is running.
     """
-    return {"status": "ok", "message": "Welcome to the Artisan AI Backend!"}
+    return {"message": "Welcome to Artisan AI's Backend"}

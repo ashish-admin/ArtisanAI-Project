@@ -1,32 +1,35 @@
-# app/db/session.py
-from sqlalchemy import create_engine
+# backend/app/db/session.py
+
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from app.core.config import settings
 
-# --- Database Configuration ---
-# For our MVP, we will use a simple SQLite database.
-# The file 'artisan_ai_be.db' will be created in the root directory.
-# The 'connect_args' is recommended for SQLite to prevent issues with single-threaded access.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./artisan_ai_be.db"
-
-# The SQLAlchemy engine is the core interface to the database.
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+# The async engine is the entry point to the database.
+# future=True enables 2.0 style usage.
+# pool_pre_ping=True helps manage connections that may have been closed by the database.
+async_engine = create_async_engine(
+    settings.DATABASE_URL, 
+    future=True,
+    echo=False,  # Set to True to see SQL queries in the console
+    pool_pre_ping=True
 )
 
-# The SessionLocal class is a "session factory". Each instance of SessionLocal
-# will be a new database session. This is the standard way to handle sessions
-# in FastAPI applications.
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# The sessionmaker is a factory for creating new Session objects.
+# We configure it to use our async engine and the AsyncSession class.
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
 
-# --- Dependency for FastAPI ---
-def get_db():
+async def get_db() -> AsyncSession:
     """
-    A FastAPI dependency that creates and yields a new database session
-    for each incoming API request. It ensures the session is always
-    closed, even if an error occurs.
+    Dependency function that yields a new SQLAlchemy session for each request.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

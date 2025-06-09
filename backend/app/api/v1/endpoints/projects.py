@@ -1,97 +1,78 @@
-# app/api/v1/endpoints/projects.py
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlalchemy.orm import Session
-from typing import List, Any
+# backend/app/api/v1/endpoints/projects.py
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
 
 from app.api import deps
 from app.db import crud
-from app.schemas import project as project_schema
-from app.db.base import User as DBUser
+from app.schemas.project import Project, ProjectCreate, ProjectUpdate
+from app.schemas.user import User
 
-# Create a new API router for project-related endpoints
 router = APIRouter()
 
-@router.post("/", response_model=project_schema.Project, status_code=status.HTTP_201_CREATED)
-def create_project(
-    *,
-    db: Session = Depends(deps.get_db),
-    project_in: project_schema.ProjectCreate,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Any:
+@router.post("/", response_model=Project, status_code=status.HTTP_201_CREATED)
+async def create_project(
+    project_in: ProjectCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
     """
-    Create a new writing project for the current user.
+    Create a new writing project.
     """
-    project = crud.create_user_project(db=db, project=project_in, owner_id=current_user.id)
-    return project
+    return await crud.create_project(db=db, project=project_in, owner_id=current_user.id)
 
-
-@router.get("/", response_model=List[project_schema.Project])
-def read_projects(
-    db: Session = Depends(deps.get_db),
+@router.get("/", response_model=List[Project])
+async def read_projects(
+    db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Any:
+    current_user: User = Depends(deps.get_current_user),
+):
     """
-    Retrieve a list of projects for the current user.
+    Retrieve all projects for the current user.
     """
-    projects = crud.get_projects_by_owner(db, owner_id=current_user.id, skip=skip, limit=limit)
-    return projects
+    return await crud.get_projects_by_owner(db, owner_id=current_user.id, skip=skip, limit=limit)
 
-
-@router.get("/{project_id}", response_model=project_schema.Project)
-def read_project(
-    *,
-    db: Session = Depends(deps.get_db),
+@router.get("/{project_id}", response_model=Project)
+async def read_project(
     project_id: int,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Any:
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
     """
     Get a specific project by ID.
-    Ensures the project belongs to the current user.
     """
-    project = crud.get_project(db, project_id=project_id, owner_id=current_user.id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    db_project = await crud.get_project(db, project_id=project_id, owner_id=current_user.id)
+    if db_project is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return db_project
 
-
-@router.put("/{project_id}", response_model=project_schema.Project)
-def update_project(
-    *,
-    db: Session = Depends(deps.get_db),
+@router.put("/{project_id}", response_model=Project)
+async def update_project(
     project_id: int,
-    project_in: project_schema.ProjectUpdate,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Any:
+    project_in: ProjectUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
     """
-    Update a user's writing project.
+    Update a project.
     """
-    project = crud.get_project(db, project_id=project_id, owner_id=current_user.id)
-    if not project:
-        raise HTTPException(
-            status_code=404,
-            detail="Project not found",
-        )
-    project = crud.update_project(db=db, project_id=project_id, project_update=project_in, owner_id=current_user.id)
-    return project
+    db_project = await crud.get_project(db, project_id=project_id, owner_id=current_user.id)
+    if not db_project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return await crud.update_project(db=db, db_project=db_project, project_in=project_in)
 
-
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(
-    *,
-    db: Session = Depends(deps.get_db),
+@router.delete("/{project_id}", response_model=Project)
+async def delete_project(
     project_id: int,
-    current_user: DBUser = Depends(deps.get_current_active_user),
-) -> Response:
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
     """
-    Delete a user's writing project.
+    Delete a project.
     """
-    project = crud.get_project(db, project_id=project_id, owner_id=current_user.id)
-    if not project:
-        raise HTTPException(
-            status_code=404,
-            detail="Project not found",
-        )
-    crud.delete_project(db=db, project_id=project_id, owner_id=current_user.id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    deleted_project = await crud.delete_project(db=db, project_id=project_id, owner_id=current_user.id)
+    if not deleted_project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return deleted_project

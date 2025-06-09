@@ -1,78 +1,43 @@
-# app/api/deps.py
-from typing import Generator, Optional
+# backend/app/api/deps.py
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from jose import JWTError, jwt
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import config
+from app.core.config import settings
 from app.db import crud
-from app.db.base import User
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.schemas.token import TokenData
+from app.db.base import User
 
-# This defines the security scheme. It tells FastAPI that the token should be
-# expected in the Authorization header as a Bearer token. The tokenUrl points
-# to the endpoint where clients can get a token.
-reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{config.API_V1_STR}/auth/token"
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/token"
 )
 
-
-def get_db() -> Generator:
-    """
-    A FastAPI dependency that creates and yields a new database session
-    for each incoming API request. It ensures the session is always
-    closed, even if an error occurs.
-    """
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
+async def get_current_user(
+    db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
     """
-    Dependency to get the current user from a JWT token.
-    Decodes the token, validates it, and fetches the user from the database.
+    Dependency to get the current authenticated user from the JWT token.
     """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(
-            token, config.JWT_SECRET_KEY, algorithms=[config.ALGORITHM]
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        # Pydantic's validation will ensure the email is in the correct format
-        token_data = TokenData(**payload)
-    except (jwt.JWTError, ValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
-        )
+        email: str | None = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
     
-    if token_data.email is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials, user identifier not found in token.",
-        )
-    
-    user = crud.get_user_by_email(db, email=token_data.email)
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = await crud.get_user_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
     return user
-
-
-def get_current_active_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    """
-    A dependency that builds on get_current_user to ensure the user is active.
-    This is the dependency that most protected endpoints will use.
-    """
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
