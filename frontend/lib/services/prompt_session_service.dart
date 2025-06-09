@@ -53,11 +53,14 @@ class PromptSessionService with ChangeNotifier {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to refine prompt: ${response.statusCode} ${response.body}');
+      // Provide more detailed error information
+      throw Exception(
+          'Failed to refine prompt: ${response.statusCode} ${response.body}');
     }
   }
 
-  Future<Map<String, dynamic>> submitRefinement(String sessionId, String userResponse) async {
+  Future<Map<String, dynamic>> submitRefinement(
+      String sessionId, String userResponse) async {
     final response = await _apiService.post(
       '/agent/refine-critique',
       {
@@ -69,7 +72,8 @@ class PromptSessionService with ChangeNotifier {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to submit refinement: ${response.statusCode} ${response.body}');
+      throw Exception(
+          'Failed to submit refinement: ${response.statusCode} ${response.body}');
     }
   }
 }

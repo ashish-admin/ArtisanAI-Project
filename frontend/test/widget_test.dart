@@ -1,34 +1,41 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// frontend/test/widget_test.dart
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:artisan_ai/main.dart'; // This correctly imports ArtisanAI
 
-import 'package:artisan_ai/main.dart'; // This correctly imports your main.dart
+// Mock or real services needed for the test
+import 'package:artisan_ai/services/auth_service.dart';
+import 'package:artisan_ai/services/api_service.dart';
+import 'package:artisan_ai/services/prompt_session_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const ArtisanApp()); // Changed MyApp to ArtisanApp to match the class in main.dart
+  testWidgets('Renders WelcomeScreen on initial load', (WidgetTester tester) async {
+    // Build our app with all the necessary providers and trigger a frame.
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => AuthService()),
+          ProxyProvider<AuthService, ApiService>(
+            update: (context, authService, previousApiService) =>
+                ApiService(authService),
+          ),
+          ChangeNotifierProvider(
+            create: (context) => PromptSessionService(
+              Provider.of<ApiService>(context, listen: false),
+            ),
+          ),
+        ],
+        // The child is your actual app widget
+        child: const ArtisanAI(), // Corrected name: ArtisanAI
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    // Note: This default test expects a counter app. Our ArtisanAI app doesn't have this.
-    // So these expect() calls will fail if you run this test as-is because
-    // there's no '0', '1', or '+' icon in ArtisanAI's WelcomeScreen.
-    // For now, we're just fixing the compilation error.
-    // You can comment out or adapt these expect() lines later if you write actual tests for ArtisanAI.
-    expect(find.text('0'), findsNothing); // Will fail, ArtisanAI doesn't show '0'
-    expect(find.text('1'), findsNothing); // Will fail
-
-    // Tap the '+' icon and trigger a frame.
-    // await tester.tap(find.byIcon(Icons.add)); // Will fail, no '+' icon
-    // await tester.pump();
-
-    // Verify that our counter has incremented.
-    // expect(find.text('0'), findsNothing);
-    // expect(find.text('1'), findsNothing); // Will fail
+    // Now, you can write a meaningful test. For example, let's verify
+    // the WelcomeScreen is shown, since it's your initial route.
+    expect(find.text('Welcome to Artisan AI'), findsOneWidget); // Adjust text if it's different
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Register'), findsOneWidget);
   });
 }

@@ -21,19 +21,15 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        // 1. AuthService is created.
         ChangeNotifierProvider(create: (context) => AuthService()),
-        
-        // 2. ApiService is created and is given the AuthService instance.
+        // ApiService depends on AuthService. This ensures it gets the correct instance.
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previousApiService) =>
               ApiService(authService),
         ),
-
-        // 3. PromptSessionService is created and given the ApiService instance.
+        // PromptSessionService depends on ApiService.
         ChangeNotifierProvider(
           create: (context) => PromptSessionService(
-            // Immediately provide the ApiService it needs.
             Provider.of<ApiService>(context, listen: false),
           ),
         ),
