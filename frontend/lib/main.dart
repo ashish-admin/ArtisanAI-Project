@@ -1,68 +1,68 @@
 // frontend/lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/login_screen.dart';
-import 'screens/welcome_screen.dart';
-import 'services/api_service.dart';
-import 'services/auth_service.dart';
-import 'services/prompt_session_service.dart';
-import 'theme/app_theme.dart';
+import 'package:artisan_ai/services/auth_service.dart';
+import 'package:artisan_ai/services/prompt_session_service.dart';
+import 'package:artisan_ai/services/api_service.dart';
+import 'package:artisan_ai/theme/app_theme.dart';
+import 'package:artisan_ai/screens/welcome_screen.dart';
+import 'package:artisan_ai/screens/login_screen.dart';
+import 'package:artisan_ai/screens/register_screen.dart';
+import 'package:artisan_ai/screens/goal_definition_screen.dart';
+import 'package:artisan_ai/screens/specify_output_screen.dart';
+import 'package:artisan_ai/screens/provide_context_screen.dart';
+import 'package:artisan_ai/screens/define_constraints_screen.dart';
+import 'package:artisan_ai/screens/assign_persona_screen.dart';
+import 'package:artisan_ai/screens/review_prompt_screen.dart';
+import 'package:artisan_ai/screens/saved_configurations_screen.dart';
 
 void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => PromptSessionService()),
+        // 1. AuthService is created.
+        ChangeNotifierProvider(create: (context) => AuthService()),
+        
+        // 2. ApiService is created and is given the AuthService instance.
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previousApiService) =>
               ApiService(authService),
         ),
+
+        // 3. PromptSessionService is created and given the ApiService instance.
+        ChangeNotifierProvider(
+          create: (context) => PromptSessionService(
+            // Immediately provide the ApiService it needs.
+            Provider.of<ApiService>(context, listen: false),
+          ),
+        ),
       ],
-      child: MaterialApp(
-        title: 'ArtisanAI',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        home: const AuthCheck(),
-        debugShowCheckedModeBanner: false,
-      ),
-    );
-  }
+      child: const ArtisanAI(),
+    ),
+  );
 }
 
-class AuthCheck extends StatelessWidget {
-  const AuthCheck({super.key});
+class ArtisanAI extends StatelessWidget {
+  const ArtisanAI({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      // This Future runs only once when AuthCheck is first built.
-      future: Provider.of<AuthService>(context, listen: false).tryAutoLogin(),
-      builder: (context, authResultSnapshot) {
-        // While waiting for tryAutoLogin to complete, show a loading indicator.
-        if (authResultSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        // After the Future completes, use a Consumer to listen for auth changes.
-        return Consumer<AuthService>(
-          builder: (context, authService, child) {
-            // Use the synchronous getter to decide which screen to show.
-            return authService.isAuthenticated
-                ? const WelcomeScreen()
-                : const LoginScreen();
-          },
-        );
+    return MaterialApp(
+      title: 'Artisan AI',
+      theme: AppTheme.darkTheme,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const WelcomeScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/goal': (context) => const GoalDefinitionScreen(),
+        '/format': (context) => const SpecifyOutputScreen(),
+        '/context': (context) => const ProvideContextScreen(),
+        '/constraints': (context) => const DefineConstraintsScreen(),
+        '/persona': (context) => const AssignPersonaScreen(),
+        '/review': (context) => const ReviewPromptScreen(),
+        '/saved': (context) => const SavedConfigurationsScreen(),
       },
     );
   }

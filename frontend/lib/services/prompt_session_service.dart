@@ -1,74 +1,73 @@
 // frontend/lib/services/prompt_session_service.dart
+
 import 'package:flutter/foundation.dart';
+import 'package:artisan_ai/models/prompt_session.dart';
+import 'api_service.dart';
 
 class PromptSessionService with ChangeNotifier {
-  String? _goal;
-  String? _outputFormat;
-  String? _context;
-  String? _constraints;
-  String? _personaDescription;
-  bool _personaSkipped = false;
+  final ApiService _apiService;
+  PromptSession _session = PromptSession();
 
-  String? get goal => _goal;
-  String? get outputFormat => _outputFormat;
-  String? get context => _context;
-  String? get constraints => _constraints;
-  String? get personaDescription => _personaDescription;
-  bool get personaSkipped => _personaSkipped;
+  PromptSessionService(this._apiService);
 
-  void setGoal(String goal) {
-    _goal = goal;
+  PromptSession get session => _session;
+
+  void updateGoal(String goal) {
+    _session.goal = goal;
     notifyListeners();
   }
 
-  void setOutputFormat(String format) {
-    _outputFormat = format;
+  void updateFormat(String format) {
+    _session.format = format;
     notifyListeners();
   }
 
-  void setContext(String? context) {
-    _context = context;
+  void updateContext(String context) {
+    _session.context = context;
     notifyListeners();
   }
 
-  void setConstraints(String? constraints) {
-    _constraints = constraints;
+  void updateConstraints(List<String> constraints) {
+    _session.constraints = constraints;
     notifyListeners();
   }
 
-  void setPersona({String? description, bool skipped = false}) {
-    _personaDescription = description;
-    _personaSkipped = skipped;
+  void updatePersona(String persona) {
+    _session.persona = persona;
     notifyListeners();
   }
 
   void resetSession() {
-    _goal = null;
-    _outputFormat = null;
-    _context = null;
-    _constraints = null;
-    _personaDescription = null;
-    _personaSkipped = false;
+    _session = PromptSession();
     notifyListeners();
   }
 
-  String getFinalPrompt() {
-    final parts = <String>[];
-    if (_goal != null && _goal!.isNotEmpty) {
-      parts.add('### Goal\n$_goal');
+  Future<Map<String, dynamic>> refinePrompt() async {
+    final response = await _apiService.post(
+      '/agent/start-critique',
+      _session.toJson(),
+    );
+
+    if (response.statusCode == 200) {
+      return response.data;
+    } else {
+      throw Exception('Failed to refine prompt: ${response.statusCode} ${response.data}');
     }
-    if (_outputFormat != null && _outputFormat!.isNotEmpty) {
-      parts.add('### Output Format\n$_outputFormat');
+  }
+
+  Future<Map<String, dynamic>> submitRefinement(String sessionId, String userResponse) async {
+    final response = await _apiService.post(
+      '/agent/refine-critique',
+      {
+        'session_id': sessionId,
+        'user_response': userResponse,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return response.data;
+    } else {
+      throw Exception('Failed to submit refinement: ${response.statusCode} ${response.data}');
     }
-    if (_context != null && _context!.isNotEmpty) {
-      parts.add('### Context\n$_context');
-    }
-    if (_constraints != null && _constraints!.isNotEmpty) {
-      parts.add('### Constraints\n$_constraints');
-    }
-    if (!_personaSkipped && _personaDescription != null && _personaDescription!.isNotEmpty) {
-      parts.add('### Persona\n$_personaDescription');
-    }
-    return parts.join('\n\n---\n\n');
   }
 }

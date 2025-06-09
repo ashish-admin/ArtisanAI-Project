@@ -10,13 +10,15 @@ dependencies:
   flutter:
     sdk: flutter
   
-  shared_preferences: ^2.2.3 # You already have this
+ 
 
   # --- ADD THESE NEW DEPENDENCIES ---
   http: ^1.2.1                 # For making HTTP requests to your backend
   flutter_secure_storage: ^9.2.2 # For securely storing the JWT token
   provider: ^6.1.2               # For simple state management (auth state)
-  # --- END OF NEW DEPENDENCIES ---
+  dio: ^5.4.0  # <-- Added this line
+  shared_preferences: ^2.2.3 # You already have this
+   # --- END OF NEW DEPENDENCIES ---
 
   cupertino_icons: ^1.0.2
 
