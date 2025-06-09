@@ -1,54 +1,69 @@
-// lib/main.dart
+// frontend/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';
-
-import 'package:artisan_ai/services/auth_service.dart';
-import 'package:artisan_ai/services/prompt_session_service.dart'; // <-- ADD THIS IMPORT
-import 'package:artisan_ai/screens/welcome_screen.dart';
-import 'package:artisan_ai/screens/login_screen.dart';
-import 'package:artisan_ai/theme/app_theme.dart';
+import 'screens/login_screen.dart';
+import 'screens/welcome_screen.dart';
+import 'services/api_service.dart';
+import 'services/auth_service.dart';
+import 'services/prompt_session_service.dart';
+import 'theme/app_theme.dart';
 
 void main() {
-  runApp(
-    // CORRECTED: Use MultiProvider to provide multiple services to the app.
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => AuthService()),
-        ChangeNotifierProvider(create: (context) => PromptSessionService()),
-      ],
-      child: const ArtisanApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
-class ArtisanApp extends StatelessWidget {
-  const ArtisanApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ArtisanAI',
-      theme: AppTheme.artisanTheme,
-      debugShowCheckedModeBanner: false,
-      home: Consumer<AuthService>(
-        builder: (context, authService, child) {
-          // This logic remains the same, showing Login or Welcome screen based on auth state.
-          // A FutureBuilder has been removed for simplicity; the auth check is handled
-          // within the AuthService constructor now.
-          if (authService.isAuthenticated) {
-            if (kDebugMode) {
-              print("Main: User is authenticated, showing WelcomeScreen.");
-            }
-            return const WelcomeScreen();
-          } else {
-            if (kDebugMode) {
-              print("Main: User is NOT authenticated, showing LoginScreen.");
-            }
-            return const LoginScreen();
-          }
-        },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => PromptSessionService()),
+        ProxyProvider<AuthService, ApiService>(
+          update: (context, authService, previousApiService) =>
+              ApiService(authService),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'ArtisanAI',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        home: const AuthCheck(),
+        debugShowCheckedModeBanner: false,
       ),
+    );
+  }
+}
+
+class AuthCheck extends StatelessWidget {
+  const AuthCheck({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      // This Future runs only once when AuthCheck is first built.
+      future: Provider.of<AuthService>(context, listen: false).tryAutoLogin(),
+      builder: (context, authResultSnapshot) {
+        // While waiting for tryAutoLogin to complete, show a loading indicator.
+        if (authResultSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // After the Future completes, use a Consumer to listen for auth changes.
+        return Consumer<AuthService>(
+          builder: (context, authService, child) {
+            // Use the synchronous getter to decide which screen to show.
+            return authService.isAuthenticated
+                ? const WelcomeScreen()
+                : const LoginScreen();
+          },
+        );
+      },
     );
   }
 }

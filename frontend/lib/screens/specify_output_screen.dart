@@ -1,108 +1,78 @@
-// lib/screens/specify_output_screen.dart
+// frontend/lib/screens/specify_output_screen.dart
 import 'package:flutter/material.dart';
-import 'package:artisan_ai/screens/provide_context_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/prompt_session_service.dart';
+import 'provide_context_screen.dart';
 
 class SpecifyOutputScreen extends StatefulWidget {
-  final String userGoal;
-
-  const SpecifyOutputScreen({super.key, required this.userGoal});
+  const SpecifyOutputScreen({super.key});
 
   @override
-  _SpecifyOutputScreenState createState() => _SpecifyOutputScreenState();
+  State<SpecifyOutputScreen> createState() => _SpecifyOutputScreenState();
 }
 
 class _SpecifyOutputScreenState extends State<SpecifyOutputScreen> {
-  final List<String> _outputFormats = [
-    "Paragraph", "Bullet Points", "Numbered List", "JSON", 
-    "Code Snippet", "Email", "Short Summary", "Detailed Explanation",
-    "Creative Story", "Technical Document", "Marketing Copy" // Added more options
-  ];
-  String? _selectedOutputFormat;
+  final _controller = TextEditingController();
 
-  void _onNextPressed() {
-    if (_selectedOutputFormat != null) {
-      print("User Goal: ${widget.userGoal}");
-      print("Selected Output Format: $_selectedOutputFormat");
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill with existing data.
+    _controller.text = Provider.of<PromptSessionService>(context, listen: false).outputFormat ?? '';
+  }
 
-      Navigator.push(
-        context,
+  void _onNext() {
+    if (_controller.text.isNotEmpty) {
+      // Save data to the service.
+      Provider.of<PromptSessionService>(context, listen: false)
+          .setOutputFormat(_controller.text);
+          
+      // Corrected: Navigate without any invalid parameters.
+      Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => ProvideContextScreen(
-            userGoal: widget.userGoal,
-            selectedOutputFormat: _selectedOutputFormat!,
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select an output format.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
+          builder: (_) => const ProvideContextScreen(),
         ),
       );
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final chipTheme = Theme.of(context).chipTheme;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Step 2: Output Format'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                'What kind of output format are you looking for?',
-                style: textTheme.headlineMedium,
+      appBar: AppBar(title: const Text('Step 2: Specify Output Format')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Describe the desired output format.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'e.g., "A JSON object with keys: subject, body, closing"...',
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Choose the structure that best fits the AI\'s response. This helps the AI understand the desired presentation.',
-                style: textTheme.bodyMedium,
+              maxLines: 5,
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _onNext,
+              child: const Text('Next'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView(
-                  children: _outputFormats.map((format) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5.0), // Increased vertical padding
-                    child: ChoiceChip(
-                      label: Text(format, style: textTheme.bodyLarge),
-                      selectedColor: chipTheme.selectedColor,
-                      labelStyle: _selectedOutputFormat == format 
-                                  ? chipTheme.secondaryLabelStyle?.copyWith(fontSize: textTheme.bodyLarge?.fontSize) 
-                                  : chipTheme.labelStyle?.copyWith(fontSize: textTheme.bodyLarge?.fontSize),
-                      backgroundColor: chipTheme.backgroundColor,
-                      selected: _selectedOutputFormat == format,
-                      onSelected: (bool selected) {
-                        setState(() {
-                          _selectedOutputFormat = selected ? format : null;
-                        });
-                      },
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      elevation: _selectedOutputFormat == format ? 2 : 0, // Add elevation when selected
-                    ),
-                  )).toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _onNextPressed,
-                child: const Text('Next Step'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

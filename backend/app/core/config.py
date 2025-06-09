@@ -35,13 +35,15 @@ try:
     print(">>> Loading application configuration...")
 
     # Load from Secret Manager, with .env as fallback
-    JWT_SECRET_KEY = get_secret("JWT_SECRET_KEY", GCP_PROJECT_ID)
+    JWT_SECRET_KEY = get_secret("SECRET_KEY", GCP_PROJECT_ID)
     GOOGLE_API_KEY = get_secret("GOOGLE_API_KEY", GCP_PROJECT_ID)
+    DATABASE_URL = get_secret("DATABASE_URL", GCP_PROJECT_ID)
+
 
     # --- General API & Token Settings ---
-    # CORRECTED: Added the missing ACCESS_TOKEN_EXPIRE_MINUTES constant
     API_V1_STR: str = "/api/v1"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # Default token expiration time in minutes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ALGORITHM = "HS256"
 
     print(">>> Configuration and secrets loaded successfully.")
 

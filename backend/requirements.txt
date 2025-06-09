@@ -1,21 +1,11 @@
-# --- Core Framework ---
-fastapi
-uvicorn[standard]
-
-# --- Database ---
-sqlalchemy
-
-# --- Data Validation ---
-pydantic[email]
-
-# --- Security & Authentication ---
-passlib[bcrypt]
-python-jose[cryptography]
-python-multipart
-
-# --- Google Cloud Integration ---
-google-cloud-aiplatform
-google-cloud-secret-manager
-
-# --- Configuration ---
-python-dotenv
+fastapi==0.115.12
+uvicorn[standard]==0.30.1
+sqlalchemy==2.0.31
+python-dotenv==1.0.1
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+pydantic==2.8.2
+pydantic-settings==2.3.4
+dnspython==2.6.1
+email-validator==2.2.0
+google-cloud-secret-manager==2.24.0

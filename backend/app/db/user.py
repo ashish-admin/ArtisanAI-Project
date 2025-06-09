@@ -1,46 +1,38 @@
-pp/schemas/user.py
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+# backend/app/db/user.py
 
---- Shared Base Schema ---
-Contains common attributes for a user.
-class UserBase(BaseModel):
-"""
-Base Pydantic model for User. Defines common attributes.
-EmailStr type provides automatic email validation.
-"""
-email: EmailStr
-is_active: bool = True
+from sqlalchemy.orm import Session
 
---- Schemas for Specific Use Cases ---
-class UserCreate(UserBase):
-"""
-Schema for creating a new user. Inherits from UserBase and adds the password.
-This is used as the request body for the /register endpoint.
-"""
-password: str
+from app import models, schemas
+from app.services import security
 
-class UserUpdate(BaseModel):
-"""
-Schema for updating an existing user. All fields are optional.
-This allows for partial updates (e.g., only changing the password or active status).
-"""
-email: Optional[EmailStr] = None
-password: Optional[str] = None
-is_active: Optional[bool] = None
 
-class User(UserBase):
-"""
-Schema for returning a user in an API response.
-It inherits from UserBase and adds the user's ID.
-Crucially, it does NOT include the hashed_password.
-"""
-id: int
-
-class Config:
+def get_user_by_email(db: Session, email: str):
     """
-    Pydantic V2 configuration to enable ORM mode (now from_attributes).
-    This allows the Pydantic model to be created directly from a
-    SQLAlchemy model instance (e.g., our db.User object).
+    Fetches a user from the database by their email address.
     """
-    from_attributes = True
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
+def create_user(db: Session, user: schemas.user.UserCreate):
+    """
+    Creates a new user in the database with a hashed password.
+    """
+    hashed_password = security.get_password_hash(user.password)
+    db_user = models.User(email=user.email, hashed_password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def authenticate_user(db: Session, email: str, password: str):
+    """
+    Authenticates a user by checking their email and verifying their password.
+    Returns the user object on success, None on failure.
+    """
+    user = get_user_by_email(db, email=email)
+    if not user:
+        return None
+    if not security.verify_password(password, user.hashed_password):
+        return None
+    return user

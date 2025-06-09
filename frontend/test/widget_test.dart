@@ -12,7 +12,7 @@ import 'package:artisan_ai/main.dart'; // This correctly imports your main.dart
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const ArtisanApp()); // CORRECTED: Changed MyApp to ArtisanApp
+    await tester.pumpWidget(const MyApp()); // Changed ArtisanApp to MyApp to match the class in main.dart
 
     // Verify that our counter starts at 0.
     // Note: This default test expects a counter app. Our ArtisanAI app doesn't have this.

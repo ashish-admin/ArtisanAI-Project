@@ -1,196 +1,82 @@
-// lib/services/auth_service.dart
+// frontend/lib/services/auth_service.dart
 import 'dart:convert';
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService with ChangeNotifier {
-  static const String baseUrl = "http://127.0.0.1:8000/api/v1";
-  final _storage = const FlutterSecureStorage();
-
+  final String _baseUrl = 'http://127.0.0.1:8000';
   String? _token;
-  bool _isAuthenticated = false;
-  final Completer<void> _autoLoginCompleter = Completer<void>();
-
+  
+  // A public, synchronous getter for the UI to check the auth state.
+  bool get isAuthenticated => _token != null;
+  
+  // A public getter for the ApiService to use.
   String? get token => _token;
-  bool get isAuthenticated => _isAuthenticated;
-  Future<void> get onInitializationComplete => _autoLoginCompleter.future;
 
-  AuthService() {
-    _tryAutoLogin();
-  }
-
-  Future<void> _tryAutoLogin() async {
-    try {
-      final storedToken = await _storage.read(key: 'auth_token');
-      if (kDebugMode) print("AuthService (_tryAutoLogin): Checking for stored token.");
-      
-      if (storedToken != null && storedToken.isNotEmpty) {
-        _token = storedToken;
-        bool isTokenValid = await verifyToken();
-        if (isTokenValid) {
-          _isAuthenticated = true;
-          if (kDebugMode) print("AuthService (_tryAutoLogin): Stored token is valid. User is authenticated.");
-        } else {
-          if (kDebugMode) print("AuthService (_tryAutoLogin): Stored token is EXPIRED or INVALID. Forcing logout.");
-          await logout(notify: false);
-        }
-      } else {
-        _isAuthenticated = false;
-      }
-    } catch (e) {
-       if (kDebugMode) print("AuthService (_tryAutoLogin): Error during auto-login: $e");
-      _isAuthenticated = false;
-    } finally {
-      if (!_autoLoginCompleter.isCompleted) {
-        _autoLoginCompleter.complete();
-      }
-      notifyListeners();
+  // This method handles the one-time async check on app startup.
+  Future<void> tryAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey('auth_token')) {
+      return;
     }
-  }
-
-  Future<bool> verifyToken() async {
-    if (_token == null) return false;
-    final url = Uri.parse('${AuthService.baseUrl}/auth/users/me');
-    try {
-      final response = await http.get(url, headers: getAuthHeaders());
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+    _token = prefs.getString('auth_token');
+    notifyListeners();
   }
 
   Future<bool> login(String email, String password) async {
-    final url = Uri.parse('${AuthService.baseUrl}/auth/token');
-    _isAuthenticated = false;
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: {'username': email, 'password': password},
-      );
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final newToken = responseData['access_token'];
-        if (newToken != null && newToken.isNotEmpty) {
-          _token = newToken;
-          await _storage.write(key: 'auth_token', value: _token);
-          _isAuthenticated = true;
-          notifyListeners();
-          return true;
-        }
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/auth/token'),
+      headers: <String, String>{
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {'username': email, 'password': password},
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final tokenFromServer = data['access_token'];
+      if (tokenFromServer != null) {
+        await _saveToken(tokenFromServer);
+        notifyListeners(); // Notify UI that auth state has changed.
+        return true;
       }
-    } catch (e) {
-      if (kDebugMode) print("AuthService (login): Login exception: $e");
     }
-    notifyListeners();
     return false;
   }
-  
-  Map<String, String> getAuthHeaders() {
-    if (_token != null && _token!.isNotEmpty) {
-      return {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $_token',
-      };
-    }
-    return {'Content-Type': 'application/json; charset=UTF-8'};
-  }
 
-  Future<void> logout({bool notify = true}) async {
+  Future<void> logout() async {
     _token = null;
-    _isAuthenticated = false;
-    await _storage.delete(key: 'auth_token');
-    if (kDebugMode) {
-      print("AuthService (logout): Logged out, token deleted.");
-    }
-    if (notify) {
-      notifyListeners();
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    notifyListeners(); // Notify UI that auth state has changed.
+  }
+
+  Future<void> _saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+    _token = token;
   }
   
-  Future<Map<String, dynamic>> _handleAuthResponse(http.Response response) async {
-    if (response.statusCode == 401) {
-      if (kDebugMode) print("AuthService: Received 401 Unauthorized. Logging out automatically.");
-      await logout();
-      return {'success': false, 'error': 'Session expired. Please log in again.'};
-    }
-    
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return {'success': true, 'data': {}};
-      return {'success': true, 'data': jsonDecode(response.body)};
-    } else {
-      try {
-        final errorData = jsonDecode(response.body);
-        return {'success': false, 'error': errorData['detail'] ?? 'An unknown server error occurred.'};
-      } catch (e) {
-        return {'success': false, 'error': 'Failed to process server response. Status: ${response.statusCode}'};
-      }
-    }
+  // This is kept for internal use or if another service needs the raw future.
+  Future<String?> getToken() async {
+    if (_token != null) return _token;
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('auth_token');
+    return _token;
   }
 
-  Future<Map<String, dynamic>> _authenticatedGet(Uri url) async {
-    if (!isAuthenticated) return {'success': false, 'error': 'User not authenticated'};
-    try {
-        final response = await http.get(url, headers: getAuthHeaders());
-        return await _handleAuthResponse(response);
-    } catch (e) {
-        return {'success': false, 'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> _authenticatedPost(Uri url, {Object? body}) async {
-    if (!isAuthenticated) return {'success': false, 'error': 'User not authenticated'};
-    try {
-        final response = await http.post(url, headers: getAuthHeaders(), body: body);
-        return await _handleAuthResponse(response);
-    } catch(e) {
-        return {'success': false, 'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> _authenticatedDelete(Uri url) async {
-    if (!isAuthenticated) return {'success': false, 'error': 'User not authenticated'};
-    try {
-        final response = await http.delete(url, headers: getAuthHeaders());
-        return await _handleAuthResponse(response);
-    } catch(e) {
-        return {'success': false, 'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> register(String email, String password) async {
-    final url = Uri.parse('${AuthService.baseUrl}/auth/register');
-    try {
-        final response = await http.post(url, headers: {"Content-Type": "application/json"}, body: json.encode({'email': email, 'password': password, 'is_active': true}));
-        if (response.statusCode == 201) { return {'success': true, 'message': 'Registration successful! Please log in.'}; } 
-        else {
-            final errorData = json.decode(response.body);
-            return {'success': false, 'message': errorData['detail'] ?? "Unknown registration error."};
-        }
-    } catch (e) {
-        return {'success': false, 'message': 'An exception occurred. Check network/backend.'};
-    }
-  }
-
-  Future<Map<String, dynamic>> getLlmSuggestions(Map<String, dynamic> promptData) async {
-    final url = Uri.parse('${AuthService.baseUrl}/llm-suggestions/');
-    return await _authenticatedPost(url, body: jsonEncode(promptData));
-  }
-
-  Future<Map<String, dynamic>> refinePromptWithAgent(Map<String, dynamic> promptData) async {
-    final url = Uri.parse('${AuthService.baseUrl}/agent/refine-prompt');
-    return await _authenticatedPost(url, body: jsonEncode(promptData));
-  }
-  
-  Future<Map<String, dynamic>> getConfigurations() async {
-    final url = Uri.parse('${AuthService.baseUrl}/configurations/');
-    return await _authenticatedGet(url);
-  }
-
-  Future<Map<String, dynamic>> deleteConfiguration(int configId) async {
-    final url = Uri.parse('${AuthService.baseUrl}/configurations/$configId');
-    return await _authenticatedDelete(url);
+  Future<bool> register(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/users/'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'email': email,
+        'password': password,
+      }),
+    );
+    return response.statusCode == 200;
   }
 }

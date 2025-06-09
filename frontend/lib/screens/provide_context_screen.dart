@@ -1,119 +1,84 @@
-// lib/screens/provide_context_screen.dart
+// frontend/lib/screens/provide_context_screen.dart
 import 'package:flutter/material.dart';
-import 'package:artisan_ai/screens/define_constraints_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/prompt_session_service.dart';
+import 'define_constraints_screen.dart';
 
 class ProvideContextScreen extends StatefulWidget {
-  final String userGoal;
-  final String selectedOutputFormat;
-
-  const ProvideContextScreen({
-    super.key,
-    required this.userGoal,
-    required this.selectedOutputFormat,
-  });
+  const ProvideContextScreen({super.key});
 
   @override
-  _ProvideContextScreenState createState() => _ProvideContextScreenState();
+  State<ProvideContextScreen> createState() => _ProvideContextScreenState();
 }
 
 class _ProvideContextScreenState extends State<ProvideContextScreen> {
-  final _contextController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill with existing data.
+    _controller.text = Provider.of<PromptSessionService>(context, listen: false).context ?? '';
+  }
+
+  void _onNext({bool skipped = false}) {
+    // Save data to the service.
+    Provider.of<PromptSessionService>(context, listen: false)
+        .setContext(skipped ? null : _controller.text);
+    // Navigate cleanly.
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const DefineConstraintsScreen(),
+      ),
+    );
+  }
 
   @override
   void dispose() {
-    _contextController.dispose();
+    _controller.dispose();
     super.dispose();
-  }
-
-  void _onNextPressed() {
-    if (_formKey.currentState!.validate()) {
-      final String contextProvided = _contextController.text.trim();
-      
-      print("User Goal: ${widget.userGoal}");
-      print("Selected Output Format: ${widget.selectedOutputFormat}");
-      print("Context Provided: $contextProvided");
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DefineConstraintsScreen(
-            userGoal: widget.userGoal,
-            selectedOutputFormat: widget.selectedOutputFormat,
-            contextProvided: contextProvided,
-          ),
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Step 3: Provide Context'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  'What essential background or context should the AI know for this task?',
-                  style: textTheme.headlineMedium,
+      appBar: AppBar(title: const Text('Step 3: Provide Context (Optional)')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Provide any relevant context, examples, or background information.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'e.g., "The target audience is tech professionals..."',
+              ),
+              maxLines: 5,
+            ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => _onNext(skipped: true),
+                  child: const Text('Skip'),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'e.g., Target audience, specific documents/data to reference, key definitions, desired style influences, or even examples of what NOT to do.',
-                  style: textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: TextFormField(
-                    controller: _contextController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter context here',
-                      hintText: 'Provide as much relevant detail as possible...',
-                      alignLabelWithHint: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0), // Synced with theme
-                      ),
-                    ),
-                    style: textTheme.bodyLarge,
-                    textAlignVertical: TextAlignVertical.top,
-                    textInputAction: TextInputAction.newline,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: null, 
-                    minLines: 8, // Increased minLines for more space  
-                    validator: (value) {
-                      if (value != null && value.length > 5000) {
-                        return 'Context might be too long (max 5000 characters for optimal processing).';
-                      }
-                      // Making context optional for MVP
-                      // if (value == null || value.trim().isEmpty) {
-                      //   return 'Please provide some context, or state if none is needed.';
-                      // }
-                      return null; 
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _onNextPressed,
-                  child: const Text('Next Step'),
+                  onPressed: _onNext,
+                  child: const Text('Next'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -1,78 +1,65 @@
-// lib/screens/saved_configurations_screen.dart
+// frontend/lib/screens/saved_configurations_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:artisan_ai/services/auth_service.dart';
+import '../services/api_service.dart';
+import '../services/prompt_session_service.dart';
+import 'goal_definition_screen.dart';
 
 class SavedConfigurationsScreen extends StatefulWidget {
   const SavedConfigurationsScreen({super.key});
 
   @override
-  State<SavedConfigurationsScreen> createState() => _SavedConfigurationsScreenState();
+  State<SavedConfigurationsScreen> createState() =>
+      _SavedConfigurationsScreenState();
 }
 
 class _SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
-  late Future<List<dynamic>> _configsFuture;
+  late Future<List<dynamic>> _configurationsFuture;
+  late final ApiService _apiService;
 
   @override
   void initState() {
     super.initState();
-    _configsFuture = _fetchConfigs();
+    _apiService = Provider.of<ApiService>(context, listen: false);
+    _loadConfigurations();
   }
 
-  Future<List<dynamic>> _fetchConfigs() {
-    // listen: false because this is in initState
-    final authService = Provider.of<AuthService>(context, listen: false);
-    return authService.getConfigurations().then((response) {
-      if (response['success'] == true) {
-        return response['data'] as List<dynamic>;
-      } else {
-        // Propagate the error to be handled by the FutureBuilder
-        throw Exception('Failed to load configurations: ${response['error']}');
-      }
+  void _loadConfigurations() {
+    setState(() {
+      _configurationsFuture = _apiService.getConfigurations();
     });
   }
 
-  Future<void> _deleteConfig(int configId) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final response = await authService.deleteConfiguration(configId);
-
-    if (mounted) {
-      if (response['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Configuration deleted successfully!'), backgroundColor: Colors.green),
-        );
-        // Refresh the list after deletion
-        setState(() {
-          _configsFuture = _fetchConfigs();
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response['error']}'), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
+  Future<void> _deleteConfiguration(int id) async {
+    try {
+      await _apiService.deleteConfiguration(id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuration deleted successfully!')),
+      );
+      _loadConfigurations();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting configuration: $e')),
+      );
     }
   }
 
-  void _showDeleteConfirmation(int configId, String configName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text('Are you sure you want to delete the configuration named "$configName"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          TextButton(
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              Navigator.of(ctx).pop(); // Close the dialog
-              _deleteConfig(configId);
-            },
-          ),
-        ],
-      ),
+  void _loadConfigurationIntoSession(Map<String, dynamic> config) {
+    final sessionService =
+        Provider.of<PromptSessionService>(context, listen: false);
+    sessionService.resetSession();
+    sessionService.setGoal(config['goal'] ?? '');
+    sessionService.setOutputFormat(config['output_format'] ?? '');
+    sessionService.setContext(config['context']);
+    sessionService.setConstraints(config['constraints']);
+    sessionService.setPersona(
+      description: config['persona_description'],
+      skipped: config['persona_skipped'] ?? false,
+    );
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const GoalDefinitionScreen()),
+      (route) => route.isFirst,
     );
   }
 
@@ -81,85 +68,41 @@ class _SavedConfigurationsScreenState extends State<SavedConfigurationsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved Configurations'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh List',
-            onPressed: () {
-              setState(() {
-                _configsFuture = _fetchConfigs();
-              });
-            },
-          )
-        ],
       ),
       body: FutureBuilder<List<dynamic>>(
-        future: _configsFuture,
+        future: _configurationsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Error: ${snapshot.error}', 
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
-
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Text(
-                  'You have no saved configurations yet.\nGo back and use the "Save Config" button on the review screen to save your first one!',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              child: Text('No saved configurations found.'),
             );
           }
 
-          final configs = snapshot.data!;
-
-          return RefreshIndicator(
-            onRefresh: _fetchConfigs,
-            child: ListView.builder(
-              itemCount: configs.length,
-              itemBuilder: (ctx, index) {
-                final config = configs[index];
-                final String configName = config['name'] ?? 'Untitled Configuration';
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.description_outlined),
-                    title: Text(configName),
-                    subtitle: Text(
-                      config['userGoal'] ?? 'No goal specified.',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      // TODO: Implement loading the configuration into the flow
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Loading "$configName" - To be implemented!')),
-                      );
-                    },
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.7),
-                      tooltip: 'Delete Configuration',
-                      onPressed: () => _showDeleteConfirmation(config['id'], configName),
-                    ),
-                  ),
-                );
-              },
-            ),
+          final configurations = snapshot.data!;
+          return ListView.builder(
+            itemCount: configurations.length,
+            itemBuilder: (context, index) {
+              final config = configurations[index];
+              return ListTile(
+                title: Text(config['name'] ?? 'Untitled'),
+                subtitle: Text(
+                  config['goal'] ?? 'No goal specified.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _loadConfigurationIntoSession(config),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                  onPressed: () => _deleteConfiguration(config['id']),
+                ),
+              );
+            },
           );
         },
       ),
