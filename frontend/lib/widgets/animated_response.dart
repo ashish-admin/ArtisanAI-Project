@@ -19,7 +19,7 @@ class _AnimatedResponseState extends State<AnimatedResponse>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
     _animation = CurvedAnimation(
@@ -32,7 +32,6 @@ class _AnimatedResponseState extends State<AnimatedResponse>
   @override
   void didUpdateWidget(covariant AnimatedResponse oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Re-run the animation if the child widget changes
     if (widget.child.key != oldWidget.child.key) {
       _controller.forward(from: 0.0);
     }

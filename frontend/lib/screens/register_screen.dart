@@ -15,35 +15,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String _errorMessage = '';
 
   Future<void> _register() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    
     final authService = Provider.of<AuthService>(context, listen: false);
     final success = await authService.register(
       _emailController.text,
       _passwordController.text,
     );
-    setState(() => _isLoading = false);
-
+    
     if (mounted) {
+      setState(() => _isLoading = false);
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Registration successful! Please log in.')),
         );
         Navigator.of(context).pop();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration failed. Please try again.')),
-        );
+        setState(() {
+          _errorMessage = 'Registration failed. The email might already be in use.';
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: const Text('Create Account'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -52,17 +58,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                'Join Synaptiq.ai',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 32),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
                 obscureText: true,
               ),
+              if (_errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage,
+                  style: TextStyle(color: theme.colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 32),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())

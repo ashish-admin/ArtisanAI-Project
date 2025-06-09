@@ -75,7 +75,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Theme.of(context).colorScheme.primary),
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  textStyle: Theme.of(context).elevatedButtonTheme.style?.textStyle,
+                  textStyle: Theme.of(context).elevatedButtonTheme.style?.textStyle?.resolve({}),
                 ),
                 child: const Text('Register'),
               ),

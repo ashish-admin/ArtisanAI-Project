@@ -1,4 +1,4 @@
-// frontend/lib/services/api_service.dart
+// Path: frontend/lib/services/api_service.dart
 
 import 'package:dio/dio.dart';
 import 'auth_service.dart';
@@ -23,10 +23,17 @@ class ApiService {
     );
   }
 
+  // Handles GET requests
+  Future<Response> get(String path) {
+    return _dio.get(path);
+  }
+
+  // Handles POST requests with a JSON body
   Future<Response> post(String path, Map<String, dynamic> data) {
     return _dio.post(path, data: data);
   }
 
+  // Handles POST requests with URL-encoded form data (for login)
   Future<Response> postUrlEncoded(String path, Map<String, dynamic> data) {
     return _dio.post(
       path,

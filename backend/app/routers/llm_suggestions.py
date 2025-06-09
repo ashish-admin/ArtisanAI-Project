@@ -1,37 +1,80 @@
-# artisan_ai_backend/app/routers/llm_suggestions.py
+// Path: backend/app/routers/llm_suggestions.py
+
 from fastapi import APIRouter, Depends
-from typing import List # Not strictly needed here if response model handles it, but good for clarity
+from pydantic import BaseModel
+from typing import List, Dict
 
-# Use relative imports for modules within the 'app' package
-from .. import models # For LLMRecommendationRequest and LLMRecommendationResponse
-from .. import auth   # For get_current_active_user dependency
-from .. import llm_recommender # The new logic file
+from app.api import deps
+from app.schemas.user import User
 
-router = APIRouter(
-    prefix="/api/v1/llm-suggestions",
-    tags=["LLM Suggestions"], # Tag for API docs
-    dependencies=[Depends(auth.get_current_active_user)] # Secure this endpoint
-)
+router = APIRouter()
 
-@router.post("/", response_model=models.LLMRecommendationResponse)
-async def suggest_llms_for_prompt(
-    request_data: models.LLMRecommendationRequest # Expects data matching this Pydantic model
+class SuggestionRequest(BaseModel):
+    goal: str
+
+class LlmSuggestion(BaseModel):
+    model_name: str
+    strengths: str
+    reason: str
+
+LLM_KNOWLEDGE_BASE = {
+    "gemini-1.5-pro": {
+        "strengths": "Multimodal, long context, complex reasoning",
+        "keywords": ["video", "audio", "image", "multimodal", "large document", "complex"],
+    },
+    "gemini-1.5-flash": {
+        "strengths": "Fast, high-quality, cost-effective",
+        "keywords": ["fast", "quick", "summary", "general", "classification"],
+    },
+    "claude-3-opus": {
+        "strengths": "Top-tier performance, deep reasoning, analysis",
+        "keywords": ["analysis", "research", "detailed", "writing", "creative"],
+    },
+    "gpt-4o": {
+        "strengths": "Excellent conversational ability, strong general knowledge",
+        "keywords": ["conversation", "chatbot", "dialogue", "general purpose"],
+    },
+    "llama-3-70b": {
+        "strengths": "Top open-weight model, good for instruction following",
+        "keywords": ["open source", "custom", "fine-tune"],
+    },
+    "mistral-large": {
+        "strengths": "Strong reasoning, multilingual, cost-effective for large scale",
+        "keywords": ["multilingual", "french", "german", "spanish", "italian", "code"],
+    },
+}
+
+@router.post("/", response_model=List[LlmSuggestion])
+async def get_llm_suggestions(
+    request: SuggestionRequest,
+    current_user: User = Depends(deps.get_current_user),
 ):
     """
-    Provides LLM recommendations based on detailed prompt parameters.
-    Analyzes the goal, format, context, and constraints to suggest suitable LLMs.
+    Provides tailored LLM suggestions based on the user's goal.
     """
-    print(f">>> Endpoint: suggest_llms_for_prompt called with goal: {request_data.userGoal}")
+    goal_text = request.goal.lower()
+    suggestions = []
     
-    try:
-        recommendations = llm_recommender.get_llm_recommendations(request_data)
-        print(f">>> LLM Recommender returned {len(recommendations.suggestions)} suggestions.")
-        return recommendations
-    except Exception as e:
-        # Log the error for server-side debugging
-        print(f"Error in LLM suggestion endpoint: {e}")
-        import traceback
-        print(traceback.format_exc())
-        # Re-raise as an HTTPException so FastAPI returns a proper error response
-        # You might want a more specific error model for the client here too
-        raise HTTPException(status_code=500, detail=f"An internal error occurred while generating LLM suggestions: {str(e)}")
+    for model, data in LLM_KNOWLEDGE_BASE.items():
+        if any(keyword in goal_text for keyword in data["keywords"]):
+            suggestions.append(
+                LlmSuggestion(
+                    model_name=model,
+                    strengths=data["strengths"],
+                    reason=f"Recommended for tasks involving keywords like: {', '.join(data['keywords'])}."
+                )
+            )
+
+    if not suggestions:
+        default_models = ["gemini-1.5-flash", "gpt-4o", "claude-3-opus"]
+        for model in default_models:
+            data = LLM_KNOWLEDGE_BASE[model]
+            suggestions.append(
+                 LlmSuggestion(
+                    model_name=model,
+                    strengths=data["strengths"],
+                    reason="A great general-purpose model suitable for a wide range of tasks."
+                )
+            )
+            
+    return suggestions[:3]
