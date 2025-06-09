@@ -1,9 +1,9 @@
-// frontend/lib/services/prompt_session_service.dart
+// Path: frontend/lib/services/prompt_session_service.dart
 
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:artisan_ai/models/prompt_session.dart';
-import 'api_service.dart';
+import 'package:artisan_ai/services/api_service.dart';
+import 'package:dio/dio.dart'; // Ensure Dio is imported for Exception handling
 
 class PromptSessionService with ChangeNotifier {
   final ApiService _apiService;
@@ -13,7 +13,6 @@ class PromptSessionService with ChangeNotifier {
 
   PromptSession get session => _session;
 
-  // No changes to update methods
   void updateGoal(String goal) {
     _session.goal = goal;
     notifyListeners();
@@ -23,7 +22,7 @@ class PromptSessionService with ChangeNotifier {
     _session.format = format;
     notifyListeners();
   }
-  
+
   void updateContext(String context) {
     _session.context = context;
     notifyListeners();
@@ -45,35 +44,37 @@ class PromptSessionService with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> refinePrompt() async {
-    final response = await _apiService.post(
-      '/agent/start-critique',
-      _session.toJson(),
-    );
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      // Provide more detailed error information
+    try {
+      final response = await _apiService.post(
+        '/agent/start-critique',
+        _session.toJson(),
+      );
+      // Dio's response.data is already decoded JSON
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
       throw Exception(
-          'Failed to refine prompt: ${response.statusCode} ${response.body}');
+          'Failed to refine prompt: ${e.response?.statusCode} ${e.response?.data}');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
     }
   }
 
   Future<Map<String, dynamic>> submitRefinement(
       String sessionId, String userResponse) async {
-    final response = await _apiService.post(
-      '/agent/refine-critique',
-      {
-        'session_id': sessionId,
-        'user_response': userResponse,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
+    try {
+      final response = await _apiService.post(
+        '/agent/refine-critique',
+        {
+          'session_id': sessionId,
+          'user_response': userResponse,
+        },
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
       throw Exception(
-          'Failed to submit refinement: ${response.statusCode} ${response.body}');
+          'Failed to submit refinement: ${e.response?.statusCode} ${e.response?.data}');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
     }
   }
 }

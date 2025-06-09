@@ -1,8 +1,11 @@
-// frontend/lib/screens/review_prompt_screen.dart
+// Path: frontend/lib/screens/review_prompt_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:artisan_ai/services/prompt_session_service.dart';
+import 'package:artisan_ai/widgets/animated_response.dart';
+import 'package:artisan_ai/widgets/custom_card.dart';
 
 class ReviewPromptScreen extends StatefulWidget {
   const ReviewPromptScreen({super.key});
@@ -12,154 +15,127 @@ class ReviewPromptScreen extends StatefulWidget {
 }
 
 class _ReviewPromptScreenState extends State<ReviewPromptScreen> {
-  Future<Map<String, dynamic>>? _refinePromptFuture;
-  bool _isLoading = true;
-  String? _errorMessage;
+  Future<Map<String, dynamic>>? _agentFuture;
   Map<String, dynamic>? _agentResponse;
-
   final TextEditingController _refinementController = TextEditingController();
+  bool _isRefining = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchCritique();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInitialCritique();
+    });
   }
 
-  void _fetchCritique() {
-    // Use a local variable for the service to avoid issues with context across async gaps.
-    final promptSessionService = Provider.of<PromptSessionService>(context, listen: false);
+  void _fetchInitialCritique() {
+    final sessionService = Provider.of<PromptSessionService>(context, listen: false);
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _refinePromptFuture = promptSessionService.refinePrompt();
+      _agentFuture = sessionService.refinePrompt();
     });
   }
 
   void _submitRefinement() {
-    if (_refinementController.text.isEmpty) {
-      return;
-    }
-    final promptSessionService = Provider.of<PromptSessionService>(context, listen: false);
+    if (_refinementController.text.isEmpty) return;
+    final sessionService = Provider.of<PromptSessionService>(context, listen: false);
     final sessionId = _agentResponse?['session_id'];
-    if (sessionId == null) {
+
+    if (sessionId != null) {
       setState(() {
-        _errorMessage = "Error: Session ID is missing.";
+        _isRefining = true;
+        _agentFuture = sessionService.submitRefinement(sessionId, _refinementController.text);
+        _refinementController.clear();
       });
-      return;
     }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _refinePromptFuture = promptSessionService.submitRefinement(sessionId, _refinementController.text);
-      _refinementController.clear();
-    });
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Review & Refine'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home),
+      ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _agentFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && _agentResponse == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (snapshot.hasData) {
+            _agentResponse = snapshot.data;
+          }
+
+          if (_agentResponse == null) {
+            return const Center(child: Text('No data received.'));
+          }
+
+          final bool isFinal = _agentResponse!['is_final'] ?? false;
+          return AnimatedResponse(
+            child: isFinal
+                ? _buildFinalCritique(_agentResponse!)
+                : _buildConversation(_agentResponse!),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildConversation(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        CustomCard(
+          title: "Agent's Clarification",
+          child: Text(_agentResponse!['agent_message'] ?? '...'),
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _refinementController,
+          decoration: const InputDecoration(labelText: 'Your Response'),
+          keyboardType: TextInputType.multiline,
+          maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+        _isRefining
+            ? const Center(child: CircularProgressIndicator())
+            : ElevatedButton(
+                onPressed: _submitRefinement,
+                child: const Text('Submit Response'),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildFinalCritique(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        CustomCard(
+          title: 'Engineered Prompt',
+          child: SelectableText(_agentResponse!['engineered_prompt'] ?? 'N/A'),
+          action: IconButton(
+            icon: const Icon(Icons.copy_all_outlined),
             onPressed: () {
-              Provider.of<PromptSessionService>(context, listen: false).resetSession();
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              Clipboard.setData(ClipboardData(text: _agentResponse!['engineered_prompt'] ?? ''));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Prompt copied to clipboard!')),
+              );
             },
           ),
-        ],
-      ),
-      body: Center(
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: _refinePromptFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting || _isLoading) {
-              return const CircularProgressIndicator();
-            } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            } else if (snapshot.hasData) {
-              _agentResponse = snapshot.data;
-              final bool isFinal = _agentResponse?['is_final'] ?? false;
-              
-              if (isFinal) {
-                // Display final critique
-                return _buildFinalCritique(context, _agentResponse!);
-              } else {
-                // Display conversation
-                return _buildConversation(context, _agentResponse!);
-              }
-            } else {
-              return const Text('No data received. Please try again.');
-            }
-          },
         ),
-      ),
-    );
-  }
-
-  Widget _buildFinalCritique(BuildContext context, Map<String, dynamic> data) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Final Engineered Prompt:',
-            style: Theme.of(context).textTheme.titleLarge,
+        const SizedBox(height: 16),
+        CustomCard(
+          title: 'AI Generated Critique',
+          child: SelectableText(
+            _agentResponse!['final_critique'] ?? 'N/A',
+            style: theme.textTheme.bodyLarge,
           ),
-          const SizedBox(height: 8),
-          SelectableText(data['engineered_prompt'] ?? 'N/A'),
-          const SizedBox(height: 24),
-          Text(
-            'AI-Generated Critique:',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          SelectableText(data['final_critique'] ?? 'N/A'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConversation(BuildContext context, Map<String, dynamic> data) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Agent\'s Question:',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(data['agent_message'] ?? '...', style: const TextStyle(fontSize: 16)),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _refinementController,
-            decoration: const InputDecoration(
-              labelText: 'Your Response',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.multiline,
-            maxLines: null,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _submitRefinement,
-            child: const Text('Submit Response'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

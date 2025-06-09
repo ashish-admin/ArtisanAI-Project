@@ -20,9 +20,7 @@ class AuthService with ChangeNotifier {
   }
 
   Future<String?> getToken() async {
-    if (_token != null) {
-      return _token;
-    }
+    if (_token != null) return _token;
     _token = await _storage.read(key: 'auth_token');
     return _token;
   }
@@ -54,10 +52,7 @@ class AuthService with ChangeNotifier {
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
-      body: jsonEncode(<String, String>{
-        'email': email,
-        'password': password,
-      }),
+      body: jsonEncode(<String, String>{'email': email, 'password': password}),
     );
     return response.statusCode == 201;
   }

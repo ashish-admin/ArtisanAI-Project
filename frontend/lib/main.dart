@@ -1,4 +1,4 @@
-// frontend/lib/main.dart
+// Path: frontend/lib/main.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,11 +9,7 @@ import 'package:artisan_ai/theme/app_theme.dart';
 import 'package:artisan_ai/screens/welcome_screen.dart';
 import 'package:artisan_ai/screens/login_screen.dart';
 import 'package:artisan_ai/screens/register_screen.dart';
-import 'package:artisan_ai/screens/goal_definition_screen.dart';
-import 'package:artisan_ai/screens/specify_output_screen.dart';
-import 'package:artisan_ai/screens/provide_context_screen.dart';
-import 'package:artisan_ai/screens/define_constraints_screen.dart';
-import 'package:artisan_ai/screens/assign_persona_screen.dart';
+import 'package:artisan_ai/screens/creation_hub_screen.dart'; // New main screen
 import 'package:artisan_ai/screens/review_prompt_screen.dart';
 import 'package:artisan_ai/screens/saved_configurations_screen.dart';
 
@@ -22,16 +18,16 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => AuthService()),
-        // ApiService depends on AuthService. This ensures it gets the correct instance.
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previousApiService) =>
               ApiService(authService),
         ),
-        // PromptSessionService depends on ApiService.
-        ChangeNotifierProvider(
+        ChangeNotifierProxyProvider<ApiService, PromptSessionService>(
           create: (context) => PromptSessionService(
             Provider.of<ApiService>(context, listen: false),
           ),
+          update: (context, apiService, previousSessionService) =>
+              PromptSessionService(apiService),
         ),
       ],
       child: const ArtisanAI(),
@@ -45,18 +41,15 @@ class ArtisanAI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Artisan AI',
+      title: 'Synaptiq.ai', // Updated branding
       theme: AppTheme.darkTheme,
+      debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
-        '/goal': (context) => const GoalDefinitionScreen(),
-        '/format': (context) => const SpecifyOutputScreen(),
-        '/context': (context) => const ProvideContextScreen(),
-        '/constraints': (context) => const DefineConstraintsScreen(),
-        '/persona': (context) => const AssignPersonaScreen(),
+        '/creation_hub': (context) => const CreationHubScreen(), // The new home
         '/review': (context) => const ReviewPromptScreen(),
         '/saved': (context) => const SavedConfigurationsScreen(),
       },
