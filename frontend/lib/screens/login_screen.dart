@@ -15,14 +15,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  String _errorMessage = '';
 
   Future<void> _login() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
+    setState(() => _isLoading = true);
+    // Correct: Use the single, global AuthService from Provider.
     final authService = Provider.of<AuthService>(context, listen: false);
     final success = await authService.login(
       _emailController.text,
@@ -32,22 +28,23 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/creation_hub', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/creation_hub', (route) => false);
       } else {
-        setState(() {
-          _errorMessage = 'Login failed. Please check your credentials.';
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Login failed. Please check your credentials.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Secure Login'),
+        title: const Text('Login'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -56,37 +53,17 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Welcome Back',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 32),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
+                decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
+                decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
               ),
-              if (_errorMessage.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage,
-                  style: TextStyle(color: theme.colorScheme.error),
-                  textAlign: TextAlign.center,
-                ),
-              ],
               const SizedBox(height: 32),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())

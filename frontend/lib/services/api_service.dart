@@ -23,22 +23,11 @@ class ApiService {
     );
   }
 
-  // Handles GET requests
   Future<Response> get(String path) {
     return _dio.get(path);
   }
 
-  // Handles POST requests with a JSON body
   Future<Response> post(String path, Map<String, dynamic> data) {
     return _dio.post(path, data: data);
-  }
-
-  // Handles POST requests with URL-encoded form data (for login)
-  Future<Response> postUrlEncoded(String path, Map<String, dynamic> data) {
-    return _dio.post(
-      path,
-      data: data,
-      options: Options(contentType: Headers.formUrlEncodedContentType),
-    );
   }
 }

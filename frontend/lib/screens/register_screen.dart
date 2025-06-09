@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:artisan_ai/services/auth_service.dart';
+import 'package:artisan_ai/services/auth_service.dart'; // <-- This was the missing import
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,20 +15,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  String _errorMessage = '';
 
   Future<void> _register() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-    
+    setState(() => _isLoading = true);
     final authService = Provider.of<AuthService>(context, listen: false);
     final success = await authService.register(
       _emailController.text,
       _passwordController.text,
     );
-    
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
@@ -37,19 +31,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         Navigator.of(context).pop();
       } else {
-        setState(() {
-          _errorMessage = 'Registration failed. The email might already be in use.';
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration failed. Please try again.')),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: const Text('Register'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -58,37 +51,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Join Synaptiq.ai',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 32),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
+                decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
+                decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
               ),
-              if (_errorMessage.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage,
-                  style: TextStyle(color: theme.colorScheme.error),
-                  textAlign: TextAlign.center,
-                ),
-              ],
               const SizedBox(height: 32),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())

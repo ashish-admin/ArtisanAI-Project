@@ -1,3 +1,5 @@
+// Path: frontend/pubspec.yaml
+
 name: artisan_ai
 description: "A new Flutter project."
 publish_to: 'none' 
@@ -10,7 +12,6 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Core packages for state management, secure storage, and API calls
   provider: ^6.1.2
   dio: ^5.4.3+1
   flutter_secure_storage: ^9.2.2

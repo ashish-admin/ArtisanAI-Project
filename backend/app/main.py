@@ -1,36 +1,31 @@
-# backend/app/main.py
+# Path: backend/app/main.py
 
 from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
-import vertexai
-
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
-from app.core.config import settings
+from app.db.base import Base
+from app.db.session import engine
 
-# Initialize Vertex AI
-# This needs to be done before any other calls to the Vertex AI SDK
-vertexai.init(project=settings.GCP_PROJECT_ID, location=settings.GCP_LOCATION)
+async def create_db_and_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+app = FastAPI(title="Artisan AI Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Set all CORS enabled origins
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+@app.on_event("startup")
+async def on_startup():
+    await create_db_and_tables()
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
-    """
-    An endpoint to confirm the API is running.
-    """
-    return {"message": "Welcome to Artisan AI's Backend"}
+    return {"message": "Welcome to the Synaptiq.ai Backend"}

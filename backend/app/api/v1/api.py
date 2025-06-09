@@ -1,4 +1,4 @@
-// Path: backend/app/api/v1/api.py
+# Path: backend/app/api/v1/api.py
 
 from fastapi import APIRouter
 from app.api.v1.endpoints import auth, critique, projects, llm_suggestions

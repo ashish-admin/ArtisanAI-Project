@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:artisan_ai/services/auth_service.dart';
-import 'package:artisan_ai/services/prompt_session_service.dart';
+import 'package:artisan_ai/services/auth_service.dart'; // <-- This was the missing import
+import 'package:artisan_ai/services/prompt_session_service.dart'; // <-- This was the missing import
 import 'package:artisan_ai/widgets/custom_card.dart';
 
 class CreationHubScreen extends StatefulWidget {
@@ -39,9 +39,7 @@ class _CreationHubScreenState extends State<CreationHubScreen> {
       return;
     }
 
-    final sessionService =
-        Provider.of<PromptSessionService>(context, listen: false);
-
+    final sessionService = Provider.of<PromptSessionService>(context, listen: false);
     sessionService.updateGoal(_goalController.text);
     sessionService.updateContext(_contextController.text);
     sessionService.updatePersona(_personaController.text);
@@ -52,7 +50,6 @@ class _CreationHubScreenState extends State<CreationHubScreen> {
         .where((e) => e.isNotEmpty)
         .toList();
     sessionService.updateConstraints(constraints);
-
     Navigator.pushNamed(context, '/review');
   }
 
@@ -133,9 +130,7 @@ class _CreationHubScreenState extends State<CreationHubScreen> {
                         selectedColor: theme.colorScheme.primary,
                         selected: _selectedFormat == format,
                         onSelected: (selected) {
-                          setState(() {
-                            _selectedFormat = format;
-                          });
+                          setState(() => _selectedFormat = format);
                         },
                       );
                     }).toList(),

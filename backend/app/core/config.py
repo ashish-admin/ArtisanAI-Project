@@ -1,40 +1,25 @@
-# backend/app/core/config.py
+# Path: backend/app/core/config.py
 
+import os
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl
-from typing import List, Union
 
 class Settings(BaseSettings):
     """
-    Application settings loaded from environment variables.
+    Application settings loaded from environment variables and defaults.
     """
-    PROJECT_NAME: str = "Artisan AI"
-    API_V1_STR: str = "/api/v1"
-
-    # Security settings
+    # From .env
     SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-
-    # Database URL
     DATABASE_URL: str
+    GOOGLE_API_KEY: str
 
-    # CORS settings
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "https://your-frontend-domain.com", # Add your frontend domain
-    ]
-
-    # Google Cloud settings
-    # This is the path to your service account key file
-    GOOGLE_APPLICATION_CREDENTIALS: Union[str, None] = None
-    GCP_PROJECT_ID: Union[str, None] = None
-    GCP_LOCATION: Union[str, None] = None
+    # Defaults
+    PROJECT_NAME: str = "Synaptiq.ai"
+    API_V1_STR: str = "/api/v1"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # 1 hour
 
     class Config:
         case_sensitive = True
         env_file = ".env"
-        env_file_encoding = 'utf-8'
 
 settings = Settings()

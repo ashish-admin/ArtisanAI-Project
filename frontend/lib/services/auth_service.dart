@@ -1,4 +1,4 @@
-// frontend/lib/services/auth_service.dart
+// Path: frontend/lib/services/auth_service.dart
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -26,35 +26,34 @@ class AuthService with ChangeNotifier {
   }
 
   Future<bool> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/auth/token'),
-      headers: <String, String>{
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: {'username': email, 'password': password},
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/auth/token'),
+        headers: <String, String>{
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {'username': email, 'password': password},
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final tokenFromServer = data['access_token'];
-      if (tokenFromServer != null) {
-        await _saveToken(tokenFromServer);
-        notifyListeners();
-        return true;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final tokenFromServer = data['access_token'];
+        if (tokenFromServer != null) {
+          await _saveToken(tokenFromServer);
+          notifyListeners();
+          return true;
+        }
       }
+      return false;
+    } catch (e) {
+      debugPrint("Login Error: $e");
+      return false;
     }
-    return false;
   }
-
-  Future<bool> register(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/auth/register'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{'email': email, 'password': password}),
-    );
-    return response.statusCode == 201;
+  
+  Future<void> _saveToken(String token) async {
+    await _storage.write(key: 'auth_token', value: token);
+    _token = token;
   }
 
   Future<void> logout() async {
@@ -63,8 +62,12 @@ class AuthService with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _saveToken(String token) async {
-    await _storage.write(key: 'auth_token', value: token);
-    _token = token;
+  Future<bool> register(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/auth/register'),
+      headers: <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(<String, String>{'email': email, 'password': password}),
+    );
+    return response.statusCode == 201;
   }
 }

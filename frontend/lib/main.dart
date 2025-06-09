@@ -9,7 +9,7 @@ import 'package:artisan_ai/theme/app_theme.dart';
 import 'package:artisan_ai/screens/welcome_screen.dart';
 import 'package:artisan_ai/screens/login_screen.dart';
 import 'package:artisan_ai/screens/register_screen.dart';
-import 'package:artisan_ai/screens/creation_hub_screen.dart'; // New main screen
+import 'package:artisan_ai/screens/creation_hub_screen.dart';
 import 'package:artisan_ai/screens/review_prompt_screen.dart';
 import 'package:artisan_ai/screens/saved_configurations_screen.dart';
 
@@ -17,11 +17,17 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        // 1. AuthService is created once and provided to the whole app.
         ChangeNotifierProvider(create: (context) => AuthService()),
+
+        // 2. ApiService is created and is given the AuthService instance.
+        //    It will update whenever AuthService changes.
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previousApiService) =>
               ApiService(authService),
         ),
+
+        // 3. PromptSessionService is created and given the ApiService instance.
         ChangeNotifierProxyProvider<ApiService, PromptSessionService>(
           create: (context) => PromptSessionService(
             Provider.of<ApiService>(context, listen: false),
@@ -41,7 +47,7 @@ class ArtisanAI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Synaptiq.ai', // Updated branding
+      title: 'Synaptiq.ai',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
@@ -49,7 +55,7 @@ class ArtisanAI extends StatelessWidget {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
-        '/creation_hub': (context) => const CreationHubScreen(), // The new home
+        '/creation_hub': (context) => const CreationHubScreen(),
         '/review': (context) => const ReviewPromptScreen(),
         '/saved': (context) => const SavedConfigurationsScreen(),
       },

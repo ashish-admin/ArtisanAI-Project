@@ -1,21 +1,35 @@
 # backend/requirements.txt
 
-# Core FastAPI and server
-fastapi
-uvicorn[standard]
-
 # Pydantic for data validation and settings management
 pydantic
 pydantic-settings
+python-dotenv==1.0.1
 
 # Database - ORM and async driver
 sqlalchemy
 alembic
 aiosqlite
 
-# Security - Password hashing and JWT
-passlib[bcrypt]
-python-jose[cryptography]
+# Path: backend/requirements.txt
+
+# --- Core FastAPI & Server ---
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# --- Database ---
+sqlalchemy[asyncio]==2.0.30
+aiosqlite==0.20.0
+
+# --- Authentication & Security ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# --- Google Gemini AI ---
+google-generativeai==0.5.4
+
+# --- Other Utilities ---
+python-multipart==0.0.9
+email-validator==2.1.1
 
 # Google Cloud Services
 google-cloud-aiplatform
