@@ -1,5 +1,6 @@
 // frontend/lib/services/prompt_session_service.dart
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:artisan_ai/models/prompt_session.dart';
 import 'api_service.dart';
@@ -12,6 +13,7 @@ class PromptSessionService with ChangeNotifier {
 
   PromptSession get session => _session;
 
+  // No changes to update methods
   void updateGoal(String goal) {
     _session.goal = goal;
     notifyListeners();
@@ -21,7 +23,7 @@ class PromptSessionService with ChangeNotifier {
     _session.format = format;
     notifyListeners();
   }
-
+  
   void updateContext(String context) {
     _session.context = context;
     notifyListeners();
@@ -49,9 +51,9 @@ class PromptSessionService with ChangeNotifier {
     );
 
     if (response.statusCode == 200) {
-      return response.data;
+      return json.decode(response.body);
     } else {
-      throw Exception('Failed to refine prompt: ${response.statusCode} ${response.data}');
+      throw Exception('Failed to refine prompt: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -65,9 +67,9 @@ class PromptSessionService with ChangeNotifier {
     );
 
     if (response.statusCode == 200) {
-      return response.data;
+      return json.decode(response.body);
     } else {
-      throw Exception('Failed to submit refinement: ${response.statusCode} ${response.data}');
+      throw Exception('Failed to submit refinement: ${response.statusCode} ${response.body}');
     }
   }
 }

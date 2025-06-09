@@ -20,11 +20,9 @@ class AuthService with ChangeNotifier {
   }
 
   Future<String?> getToken() async {
-    // If token is already in memory, return it.
     if (_token != null) {
       return _token;
     }
-    // Otherwise, try to read it from storage.
     _token = await _storage.read(key: 'auth_token');
     return _token;
   }
